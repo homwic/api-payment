@@ -69,7 +69,7 @@ Jika pembayaran tidak terjadi dalam batas waktu:
 Konstanta yang dapat Anda sesuaikan di awal file:
 
 ```js
-const PHP_BASE = 'https://api.lutify.my.id'; // basis API
+const PHP_BASE = 'https://example.com'; // basis API
 const INTERVAL_MS = 5000;    // jeda polling status (ms)
 const TIMEOUT_MS  = 600000;  // batas waktu menunggu (ms)
 const WITH_POLL_HIT = true;  // panggil endpoint poll tambahan
