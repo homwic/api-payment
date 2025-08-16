@@ -1,51 +1,58 @@
+# 🚀 qris-cli
 
+[![Node.js](https://img.shields.io/badge/Node.js-v16%2B-green?logo=node.js)](https://nodejs.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
+**qris-cli** adalah CLI sederhana untuk membuat order pembayaran **QRIS**, menampilkan URL QR, lalu memantau status pembayaran hingga **PAID**, **EXPIRED**, atau **CANCELED**.  
+Script ini berkomunikasi dengan endpoint: `https://api.lutify.my.id/index.php`.
 
-````markdown
-# qris-cli
+---
 
-CLI sederhana untuk membuat order pembayaran QRIS, menampilkan URL QR, lalu memantau status pembayaran sampai **PAID**, **EXPIRED**, atau **CANCELED**. Script memakai endpoint `https://api.lutify.my.id/index.php`.
+## ✨ Fitur
 
-## Fitur
+✅ Input nominal langsung dari terminal  
+✅ Membuat order + detail (orderId, base, unik, total, masa berlaku)  
+✅ Menampilkan URL QR (bisa dibuka di browser / di-render ke QR image)  
+✅ Polling status pembayaran otomatis  
+✅ *Keep-alive poll* opsional untuk “menyentil” server  
+✅ Timeout otomatis bila terlalu lama menunggu  
 
-- Input nominal dari terminal (tanpa kode unik)
-- Membuat order dan menampilkan detail (orderId, base, unik, total, URL QR, masa berlaku)
-- Polling status pembayaran setiap interval tertentu
-- Opsi *keep-alive poll* terpisah untuk “menyentil” server
-- *Timeout* otomatis bila terlalu lama menunggu
+---
 
-## Prasyarat
+## 📦 Prasyarat
 
-- **Node.js**: disarankan v16+ (direkomendasikan LTS terbaru)
-- **npm** (untuk menginstal dependensi)
+- **Node.js** v16 atau lebih baru (disarankan LTS terbaru)  
+- **npm** untuk instalasi dependensi  
 
-## Instalasi
+---
 
-1. Clone / salin kode ini ke folder lokal.
+## ⚡ Instalasi
+
+1. Clone / salin proyek ini
 2. Instal dependensi:
 
 ```bash
 npm init -y
-npm i axios
-````
+npm install axios
+```
 
-> Script sudah menggunakan `readline` (bawaan Node.js), jadi cukup `axios` saja.
+---
 
-## Menjalankan
+## ▶️ Cara Menjalankan
 
-Simpan file Anda (mis. `qris-cli.js`), lalu:
+Jalankan file:
 
 ```bash
 node qris-cli.js
 ```
 
-Anda akan diminta memasukkan nominal:
+Masukkan nominal (contoh):
 
 ```
 Masukkan nominal (tanpa kode unik): 25000
 ```
 
-Contoh keluaran:
+Contoh output:
 
 ```
 2025-08-17T03:10:22.345Z - Membuat order di server...
@@ -53,57 +60,62 @@ Contoh keluaran:
 2025-08-17T03:10:22.789Z - QR URL: https://...
 2025-08-17T03:10:22.789Z - Berlaku s/d: 2025-08-17 03:20:22
 2025-08-17T03:10:22.789Z - Menunggu pembayaran...
-2025-08-17T03:10:27.912Z - Status: PENDING - menunggu...
-...
 2025-08-17T03:11:42.001Z - ✅ LUNAS: paid_at=2025-08-17 03:11:41, mutation_id=ABCDE12345
 ```
 
-Jika pembayaran tidak terjadi dalam batas waktu:
+---
 
-```
-2025-08-17T03:20:23.001Z - ❌ Timeout menunggu pembayaran.
-```
+## ⚙️ Konfigurasi
 
-## Konfigurasi Cepat
+Parameter di awal file bisa disesuakan:
 
-Konstanta yang dapat Anda sesuaikan di awal file:
+| Konstanta       | Default               | Deskripsi |
+|-----------------|-------------------------| -----------|
+| `PHH_BASE`      | `https://api.lutify.my.id` | Basis URL backend |
+| `INTERVAL_MS`   | `5000` (5s)            | Interval polling status |
+| `TIMEOUT_MS`    | `600000` (10m)        | Batas maksimal menunggu |
+| `WITH_POLL_HIP  | `true`                | Panggil endpoint `poll` setiap ±10 detik |
 
-```js
-const PHP_BASE = 'https://example.com'; // basis API
-const INTERVAL_MS = 5000;    // jeda polling status (ms)
-const TIMEOUT_MS  = 600000;  // batas waktu menunggu (ms)
-const WITH_POLL_HIT = true;  // panggil endpoint poll tambahan
-```
+---
 
-* **PHP\_BASE**: basis URL backend PHP.
-* **INTERVAL\_MS**: seberapa sering cek status.
-* **TIMEOUT\_MS**: berapa lama maksimal menunggu hingga batal.
-* **WITH\_POLL\_HIT**: bila `true`, script akan memanggil `action=poll` (tiap ±10 detik) untuk menjaga server tetap aktif / memicu sinkronisasi (bergantung implementasi backend).
+## 🔄 Alur Kerja
 
-## Alur Kerja
-
-1. **Input nominal** → validasi minimal `100`.
-2. **create\_order** (`action=create_order&amount=...`)
-3. Tampilkan detail order & **qris\_url**.
-4. Mulai polling:
-
-   * **status** (`action=status&id=...`) setiap `INTERVAL_MS`.
-   * Opsional **poll** (`action=poll`) tiap \~10 detik jika `WITH_POLL_HIT=true`.
+1. Input nominal → validasi minimal `100`
+2. **create_order** → kirim request `action=create_order&amount=...`
+3. Tampilkan detail order & `qris_url`
+4. Mulai polling status:
+   - `action=status&id=...` setiap `INTERVAL_MS`
+   - Opsional `action=poll` bila `WITH_POLL_HIT=true`
 5. Berhenti jika:
+   - `PAID` → keluar dengan kode **0**
+   - `EXPIRED` / `CANCELED` → keluar dengan kode **1**
+   - Timeout tercapai → keluar dengan kode **1**
+6. Error fatal → keluar dengan kode **2**
 
-   * `status === 'PAID'` → keluar dengan kode `0`.
-   * `status === 'EXPIRED'` atau `CANCELED` → keluar dengan kode `1`.
-   * Mencapai `TIMEOUT_MS` → keluar dengan kode `1`.
-6. Error tak terduga → log dan keluar dengan kode `2`.
+---
 
-## Kode Keluar (Exit Codes)
+## 📋 Exit Codes
 
-* `0` — sukses, pembayaran **PAID**
-* `1` — *expired/canceled/timeout* atau validasi gagal (mis. nominal < 100)
-* `2` — error tak terduga (jaringan, parsing, dll.)
+| Code | Arti |
+|------|------|
+| `0`  | ✅ Pembayaran sukses (**PAID**) |
+| `1`  | ❌ Gagal (EXPIRED / CANCELED / TIMEOUT / validasi gagal) |
+| `2`  | ⚠️ Error tak terduga (jaringan, parsing, dsb.) |
 
-## Tips Pemakaian
+---
 
-* **Tampilkan QR**: `qris_url` bisa dibuka di browser atau di-*render* ke gambar/terminal QR (tool pihak ketiga).
-* **Integrasi**: Jalankan via proses *child* dari aplikasi lain, baca `stdout` untuk *event-driven* handling.
+## 💡 Tips Pemakaian
+
+- **Tampilkan QR**: buka `qris_url` di browser, atau render jadi QR code di terminal dengan tool pihak ketiga.  
+- **Integrasi**: bisa dijalankan via *child process* dari aplikasi lain, baca `stdout` untuk event-driven handling.  
+- **Logging**: setiap log diberi stempel waktu ISO — memudahkan debugging.  
+
+---
+
+## 📜 Lisensi
+
+Proyek ini dirilis di bawah lisensi **MIT**.  
+Bebas digunakan, dimodifikasi, dan disebarluaskan dengan atribusi.
+
+---
 
